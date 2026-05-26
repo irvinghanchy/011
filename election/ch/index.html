@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>計票紙快速排版生成器</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="app-header no-print">
+    <div>
+      <h1>計票紙快速排版生成器</h1>
+      <p>即時產生 A2 / A1 / A3 拼接版的選舉開票紙。</p>
+    </div>
+    <div class="header-actions">
+      <button id="btnPrint" class="primary">列印 / 匯出 PDF</button>
+      <button id="btnReset" type="button">重設範例</button>
+    </div>
+  </header>
+  <main class="layout">
+    <section class="panel no-print">
+      <div class="card">
+        <h2>1. 一般資料</h2>
+        <label class="field">
+          <span>選舉別</span>
+          <select id="electionPreset">
+            <option value="">— 請選擇 —</option>
+            <option value="第十二屆會長及副會長選舉">第◯◯屆會長及副會長選舉</option>
+            <option value="第十二屆直選學生議員選舉">第◯◯屆直選學生議員選舉</option>
+            <option value="第十二屆比例代表學生議員選舉">第◯◯屆比例代表學生議員選舉</option>
+            <option value="第十二屆直選學生議員補選">第◯◯屆直選學生議員補選</option>
+            <option value="一一四學年度備位學生代表選舉">◯◯◯學年度備位學生代表選舉</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>選舉區</span>
+          <select id="districtPreset">
+            <option value="">— 請選擇 —</option>
+            <option value="高中部">高中部</option>
+            <option value="國中部">國中部</option>
+            <option value="國小部">國小部</option>
+            <option value="手動輸入">手動輸入</option>
+          </select>
+        </label>
+        <div class="grid-2">
+          <label class="field">
+            <span>屆次 / 學年度</span>
+            <input id="termText" type="text" value="第十二屆" placeholder="例如：第十二屆 / 一一四學年度" />
+          </label>
+          <label class="field">
+            <span>手動標題（可選）</span>
+            <input id="manualTitle" type="text" placeholder="直接輸入完整標題" />
+          </label>
+        </div>
+        <label class="field hidden" id="districtManualWrap">
+          <span>手動輸入選舉區</span>
+          <input id="districtManual" type="text" placeholder="例如：內部投票區" />
+        </label>
+        <label class="field">
+          <span>版面尺寸</span>
+          <select id="paperSize">
+            <option value="A2">A2 原始大小（594×420mm）</option>
+            <option value="A1">A1 原始大小（841×594mm）</option>
+            <option value="A3_SPLIT">A2 內容拆成兩張 A3（297×420mm × 2）</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>輸出色彩</span>
+          <select id="colorMode">
+            <option value="color">彩色（紅色標題與候選號碼）</option>
+            <option value="bw">黑白</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>輸出字型</span>
+          <select id="fontMode">
+            <option value="kai">楷體</option>
+            <option value="hei">黑體</option>
+          </select>
+        </label>
+      </div>
+      <div class="card">
+        <h2>2. 候選人資料</h2>
+        <div class="grid-2">
+          <label class="field">
+            <span>參選型態</span>
+            <select id="candidateMode">
+              <option value="joint">聯名參選（例如：會長／副會長）</option>
+              <option value="independent">獨立參選</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>競選型態</span>
+            <select id="contestMode">
+              <option value="sufficient">足額競選</option>
+              <option value="insufficient">不足額競選</option>
+            </select>
+          </label>
+        </div>
+        <div class="grid-2">
+          <label class="field">
+            <span>候選人數</span>
+            <input id="candidateCount" type="number" min="1" max="20" value="4" />
+          </label>
+          <label class="field">
+            <span>每人預設計票格數</span>
+            <input id="boxesPerCandidate" type="number" min="4" max="80" value="16" />
+          </label>
+        </div>
+        <div id="candidates"></div>
+        <button id="btnAddCandidate" type="button" class="secondary">＋ 新增候選人</button>
+      </div>
+      <div class="card">
+        <h2>3. 其他</h2>
+        <label class="check">
+          <input id="showSupplement" type="checkbox" />
+          <span>顯示補充條範本</span>
+        </label>
+        <label class="check">
+          <input id="showGuide" type="checkbox" checked />
+          <span>顯示格線 / 頁面示意</span>
+        </label>
+      </div>
+    </section>
+    <section class="preview-wrap">
+      <div class="preview-toolbar no-print">
+        <div id="titlePreview" class="title-preview"></div>
+        <div class="hint">左側修改後會即時更新；列印時可直接輸出 PDF。</div>
+      </div>
+      <div id="preview" class="preview"></div>
+    </section>
+  </main>
+  <template id="candidateTemplate">
+    <article class="candidate-card">
+      <div class="candidate-head">
+        <div class="candidate-index"><span>號次</span><strong class="index-value">1</strong></div>
+        <div class="candidate-name-group joint-only">
+          <input class="field-input name-left" type="text" placeholder="會長姓名" />
+          <input class="field-input name-right" type="text" placeholder="副會長姓名" />
+        </div>
+        <div class="candidate-name-single independent-only">
+          <input class="field-input name-single" type="text" placeholder="姓名" />
+        </div>
+      </div>
+      <div class="candidate-body sufficient-only">
+        <div class="label-vertical">得票數</div>
+        <div class="count-box">
+          <input class="field-input votes" type="text" placeholder="留空" />
+        </div>
+        <div class="label-vertical">黏貼區</div>
+        <div class="paste-box"></div>
+      </div>
+      <div class="candidate-body insufficient-only">
+        <div class="mini-col">
+          <div class="mini-title">同意票</div>
+          <div class="mini-box"></div>
+        </div>
+        <div class="mini-col">
+          <div class="mini-title">不同意票</div>
+          <div class="mini-box"></div>
+        </div>
+        <div class="mini-col">
+          <div class="mini-title">廢票</div>
+          <div class="mini-box mini-box-bottom"></div>
+        </div>
+      </div>
+      <div class="tally-area">
+        <div class="tally-grid"></div>
+      </div>
+    </article>
+  </template>
+  <template id="supplementTemplate">
+    <section class="supplement">
+      <div class="supplement-title">第　　張</div>
+      <div class="supplement-grid">
+        <div class="tally-grid"></div>
+      </div>
+    </section>
+  </template>
+  <script src="script.js"></script>
+</body>
+</html>
